@@ -1,0 +1,62 @@
+# =============================================================
+# TAGS TRACKER - Docker Compose
+# Para desenvolvimento local com Docker Desktop
+# =============================================================
+
+version: '3.9'
+
+services:
+  tags-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Nome amigável para o container
+    container_name: tags-tracker
+
+    # Reinicia automaticamente
+    restart: unless-stopped
+
+    # Mapeia a porta 3000 do container para 3000 do host
+    ports:
+      - "3000:3000"
+
+    # Variáveis de ambiente
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=file:./data/tracking.db
+      # IMPORTANTE: Substitua este valor por um token seguro!
+      - API_AUTH_TOKEN=${API_AUTH_TOKEN:-meu-token-secreto-super-seguro-2024}
+
+    # Volume para persistência do SQLite
+    # O banco de dados NÃO será apagado em novos deploys
+    volumes:
+      - tags_data:/app/data
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+    # Limites de recursos (ajuste conforme necessário)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volume nomeado para persistência do banco de dados
+volumes:
+  tags_data:
+    driver: local

@@ -1,0 +1,447 @@
+/* =============================================================
+   TAGS TRACKER - Estilos Customizados
+   (Complemento ao Tailwind CSS via CDN)
+   ============================================================= */
+
+/* ─── Scrollbar Customizada ─────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* ─── Leaflet — Customizações do Mapa ───────────────────────── */
+
+/* Tiles do mapa escuros usando filter */
+.leaflet-tile {
+  filter: brightness(0.7) saturate(0.8) hue-rotate(180deg) invert(1);
+}
+
+/* Override para manter o mapa responsivo */
+#map {
+  background: #0a0f1e;
+}
+
+/* Popup customizado */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.97) !important;
+  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(20px);
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip-container {
+  display: none;
+}
+
+.leaflet-popup-close-button {
+  color: #64748b !important;
+  font-size: 18px !important;
+  padding: 8px 10px !important;
+  top: 4px !important;
+  right: 4px !important;
+  border-radius: 8px !important;
+  transition: color 0.2s, background 0.2s;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #e2e8f0 !important;
+  background: rgba(100, 116, 139, 0.2) !important;
+}
+
+/* Controles do Leaflet */
+.leaflet-control-zoom {
+  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #94a3b8 !important;
+  border: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 16px !important;
+  transition: color 0.2s, background 0.2s !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(30, 41, 59, 0.95) !important;
+  color: #e2e8f0 !important;
+}
+
+/* Attribution */
+.leaflet-control-attribution {
+  background: rgba(10, 15, 30, 0.8) !important;
+  color: #475569 !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(4px);
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #64748b !important;
+}
+
+/* ─── Marcadores Customizados do Leaflet ─────────────────────── */
+
+.custom-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.marker-pin:hover {
+  transform: rotate(-45deg) scale(1.15);
+}
+
+.marker-pin-inner {
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  transform: rotate(45deg);
+}
+
+.marker-pulse {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: markerPulse 2s ease-out infinite;
+}
+
+@keyframes markerPulse {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* ─── Popup do Marcador ──────────────────────────────────────── */
+
+.tracker-popup {
+  padding: 16px;
+  min-width: 200px;
+}
+
+.tracker-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.4);
+}
+
+.tracker-popup-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tracker-popup-device-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #f1f5f9;
+  font-family: 'Inter', sans-serif;
+}
+
+.tracker-popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.tracker-popup-label {
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'Inter', sans-serif;
+}
+
+.tracker-popup-value {
+  font-size: 11px;
+  color: #cbd5e1;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+.tracker-popup-battery {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.battery-bar {
+  width: 28px;
+  height: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.6);
+  border-radius: 2px;
+  padding: 1.5px;
+  position: relative;
+}
+
+.battery-bar::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 5px;
+  background: rgba(100, 116, 139, 0.6);
+  border-radius: 0 1px 1px 0;
+}
+
+.battery-fill {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+/* ─── Item de Dispositivo na Sidebar ─────────────────────────── */
+
+.device-item {
+  position: relative;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.device-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.device-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(71, 85, 105, 0.4);
+}
+
+.device-item:hover::before {
+  opacity: 0.6;
+}
+
+.device-item.active {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.device-item.active::before {
+  opacity: 1;
+}
+
+.device-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.device-item-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.device-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.device-item-time {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.device-item-battery {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* ─── Toast Notifications ─────────────────────────────────────── */
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 240px;
+  max-width: 360px;
+  pointer-events: all;
+  animation: toastSlideIn 0.3s ease-out;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.hiding {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-success {
+  background: rgba(6, 78, 59, 0.9);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.toast-error {
+  background: rgba(69, 10, 10, 0.9);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.toast-info {
+  background: rgba(12, 74, 110, 0.9);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
+}
+
+.toast-warning {
+  background: rgba(69, 39, 9, 0.9);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+}
+
+/* ─── Animações Gerais ────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Utilitários ─────────────────────────────────────────────── */
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+}
+
+/* Seleção de texto */
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+  color: #e2e8f0;
+}
+
+/* Focus visible customizado */
+*:focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Responsividade: Mobile ─────────────────────────────────── */
+
+@media (max-width: 768px) {
+  #sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 100% !important;
+    transform: translateX(-100%);
+    z-index: 30;
+  }
+
+  #sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  #map {
+    position: absolute;
+    inset: 0;
+  }
+}
