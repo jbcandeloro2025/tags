@@ -58,7 +58,7 @@ EXPOSE 3000
 
 # Health check para o Docker / Easypanel
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+    CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
 
 # Roda as migrations e inicia o servidor
 CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
