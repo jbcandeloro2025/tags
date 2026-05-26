@@ -56,9 +56,9 @@ USER tracker
 # Expõe a porta da aplicação
 EXPOSE 3000
 
-# Health check para o Docker / Easypanel
+# Health check: verifica se o processo Node está vivo
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
+    CMD pgrep -f "node server.js" || exit 1
 
 # Roda as migrations e inicia o servidor
 CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
