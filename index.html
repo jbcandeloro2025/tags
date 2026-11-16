@@ -41,7 +41,7 @@
       <button id="btnStop" class="sec" hidden>Parar</button>
       <button id="btnTorch" class="sec" hidden>Lanterna</button>
     </div>
-    <div class="msg" id="status">Toque em “Iniciar câmera” e aponte para o código de barras (mantenha o código na horizontal, a ~15–20 cm).</div>
+    <div class="msg" id="status">Toque em “Iniciar câmera” e aponte para o código de barras da DANFE (acima de “Chave de acesso”), na horizontal, a ~15–20 cm.</div>
   </div>
 
   <div class="card" id="result" hidden>
@@ -141,7 +141,7 @@ const setStatus=(t,e)=>{ $('status').textContent=t; $('status').className='msg'+
 async function start(){
   if(!window.isSecureContext){ setStatus('A câmera só funciona em HTTPS. Abra o link https://…',true); return; }
   scanner = scanner || new Html5Qrcode('reader',{
-    formatsToSupport:[Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.QR_CODE,Html5QrcodeSupportedFormats.DATA_MATRIX],
+    formatsToSupport:[Html5QrcodeSupportedFormats.CODE_128],
     useBarCodeDetector:true, verbose:false
   });
   try{
@@ -149,7 +149,11 @@ async function start(){
       {facingMode:'environment'},
       {fps:12, qrbox:(w,h)=>({width:Math.floor(w*0.92),height:Math.floor(Math.min(h,w)*0.4)}),
        videoConstraints:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]}},
-      (text,res)=>{ if(navigator.vibrate) navigator.vibrate(120); show(text,res?.result?.format?.formatName); stop(); },
+      (text,res)=>{
+        const d=text.replace(/\D/g,'');
+        if(d.length!==44){ setStatus('Código lido não tem 44 dígitos ('+d.length+'). Aponte para o código de barras da chave de acesso.',true); return; }
+        if(navigator.vibrate) navigator.vibrate(120); show(d,'Code 128'); stop();
+      },
       ()=>{}
     );
     $('btnStart').hidden=true; $('btnStop').hidden=false;
