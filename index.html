@@ -69,7 +69,7 @@
   </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@2.1.0/dist/iife/reader/index.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const UFS = {11:'RO',12:'AC',13:'AM',14:'RR',15:'PA',16:'AP',17:'TO',21:'MA',22:'PI',23:'CE',24:'RN',25:'PB',26:'PE',27:'AL',28:'SE',29:'BA',31:'MG',32:'ES',33:'RJ',35:'SP',41:'PR',42:'SC',43:'RS',50:'MS',51:'MT',52:'GO',53:'DF'};
@@ -134,45 +134,68 @@ function renderHist(){
 $('btnClear').onclick=()=>{ try{localStorage.removeItem('hist')}catch{} renderHist(); };
 renderHist();
 
-// scanner
-let scanner=null, torchOn=false;
+// scanner (BarcodeDetector nativo quando existe; ZXing como reserva)
+let stream=null, video=null, running=false, torchOn=false, timer=null, detector=null, canvas=null;
 const setStatus=(t,e)=>{ $('status').textContent=t; $('status').className='msg'+(e?' err':''); };
 
-async function start(){
-  if(!window.isSecureContext){ setStatus('A câmera só funciona em HTTPS. Abra o link https://…',true); return; }
-  scanner = scanner || new Html5Qrcode('reader',{
-    formatsToSupport:[Html5QrcodeSupportedFormats.CODE_128],
-    useBarCodeDetector:true, verbose:false
-  });
-  try{
-    await scanner.start(
-      {facingMode:'environment'},
-      {fps:12, qrbox:(w,h)=>({width:Math.floor(w*0.92),height:Math.floor(Math.min(h,w)*0.4)}),
-       videoConstraints:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]}},
-      (text,res)=>{
-        const d=text.replace(/\D/g,'');
-        if(d.length!==44){ setStatus('Código lido não tem 44 dígitos ('+d.length+'). Aponte para o código de barras da chave de acesso.',true); return; }
-        if(navigator.vibrate) navigator.vibrate(120); show(d,'Code 128'); stop();
-      },
-      ()=>{}
-    );
-    $('btnStart').hidden=true; $('btnStop').hidden=false;
-    setStatus('Lendo… aponte para o código de barras.');
-    try{ const caps=scanner.getRunningTrackCapabilities(); if(caps&&caps.torch) $('btnTorch').hidden=false; }catch{}
-  }catch(e){
-    const m=String(e);
-    setStatus(/Permission|NotAllowed/i.test(m)?'Permissão da câmera negada. Libere o acesso nas configurações do navegador.':'Não foi possível abrir a câmera: '+m,true);
-  }
+function onText(text){
+  const d=String(text).replace(/\D/g,'');
+  if(d.length!==44){ setStatus('Leu um código com '+d.length+' dígitos. Aponte para o código de barras da chave de acesso (44 dígitos).',true); return false; }
+  if(navigator.vibrate) navigator.vibrate(120);
+  show(d,'Code 128'); stop(); return true;
 }
-async function stop(){
-  try{ if(scanner?.isScanning){ await scanner.stop(); } }catch{}
+
+async function start(){
+  if(!window.isSecureContext){ setStatus('A câmera só funciona em HTTPS.',true); return; }
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]}});
+  }catch(e){
+    setStatus(/Permission|NotAllowed/i.test(String(e))?'Permissão da câmera negada. Libere o acesso nas configurações do navegador.':'Não foi possível abrir a câmera: '+e,true); return;
+  }
+  $('reader').innerHTML=''; video=document.createElement('video');
+  video.setAttribute('playsinline',''); video.muted=true; video.srcObject=stream;
+  $('reader').appendChild(video); await video.play().catch(()=>{});
+  running=true; $('btnStart').hidden=true; $('btnStop').hidden=false;
+  try{ const caps=stream.getVideoTracks()[0].getCapabilities?.(); if(caps&&caps.torch) $('btnTorch').hidden=false; }catch{}
+
+  detector=null;
+  if('BarcodeDetector' in window){
+    try{ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes('code_128')) detector=new BarcodeDetector({formats:['code_128']}); }catch{}
+  }
+  if(detector){
+    setStatus('Lendo… aponte para o código de barras (motor nativo).');
+    const loop=async()=>{
+      if(!running) return;
+      try{ if(video.readyState>=2){ const r=await detector.detect(video); for(const c of r){ if(onText(c.rawValue)) return; } } }catch{}
+      timer=setTimeout(loop,100);
+    }; loop();
+  } else if(window.ZXingWASM){
+    setStatus('Lendo… aponte para o código de barras.');
+    canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const loop=async()=>{
+      if(!running) return;
+      if(video.videoWidth){
+        canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+        ctx.drawImage(video,0,0);
+        try{
+          const r=await ZXingWASM.readBarcodes(ctx.getImageData(0,0,canvas.width,canvas.height),{formats:['Code128'],tryHarder:true,maxNumberOfSymbols:1});
+          for(const c of r){ if(onText(c.text)) return; }
+        }catch{}
+      }
+      timer=setTimeout(loop,150);
+    }; loop();
+  } else { setStatus('Seu navegador não suporta a leitura. Use o Chrome atualizado ou cole a chave abaixo.',true); }
+}
+function stop(){
+  running=false; clearTimeout(timer);
+  try{ stream?.getTracks().forEach(t=>t.stop()); }catch{}
+  stream=null; if(video){ video.srcObject=null; }
   $('btnStart').hidden=false; $('btnStop').hidden=true; $('btnTorch').hidden=true; torchOn=false;
   $('btnStart').textContent='Ler outro código';
-  setStatus('Leitura concluída.');
 }
 $('btnStart').onclick=start;
-$('btnStop').onclick=stop;
-$('btnTorch').onclick=async()=>{ torchOn=!torchOn; try{ await scanner.applyVideoConstraints({advanced:[{torch:torchOn}]}); }catch{} };
+$('btnStop').onclick=()=>{ stop(); setStatus('Câmera parada.'); };
+$('btnTorch').onclick=async()=>{ torchOn=!torchOn; try{ await stream.getVideoTracks()[0].applyConstraints({advanced:[{torch:torchOn}]}); }catch{} };
 
 $('btnManual').onclick=()=>{ const v=$('manual').value.trim(); if(v) show(v,'manual'); };
 $('btnCopy').onclick=async()=>{ if(!last)return; try{ await navigator.clipboard.writeText(last.digits||last.raw); $('btnCopy').textContent='Copiado ✓'; setTimeout(()=>$('btnCopy').textContent='Copiar número',1500);}catch{ setStatus('Não foi possível copiar.',true);} };
