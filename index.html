@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Leitor de Código de Barras</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--fg:#f1f5f9;--mut:#94a3b8;--acc:#22c55e;--err:#f87171;--bd:#334155}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;padding-bottom:env(safe-area-inset-bottom)}
+  main{max-width:560px;margin:0 auto}
+  h1{font-size:1.25rem;margin:0 0 12px}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:14px}
+  #reader{width:100%;border-radius:10px;overflow:hidden;background:#000;min-height:120px}
+  #reader video{width:100%!important;object-fit:cover}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{flex:1;min-width:120px;padding:12px;border:0;border-radius:10px;background:var(--acc);color:#052e16;font-weight:700;font-size:1rem;cursor:pointer}
+  button.sec{background:#334155;color:var(--fg)}
+  .msg{color:var(--mut);font-size:.9rem;margin-top:8px}
+  .err{color:var(--err)}
+  .code{font:600 1.15rem/1.5 ui-monospace,Menlo,monospace;word-break:break-all;letter-spacing:.5px}
+  .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.8rem;font-weight:700;margin-bottom:8px}
+  .ok{background:#14532d;color:#86efac}.bad{background:#7f1d1d;color:#fecaca}.neu{background:#334155;color:var(--fg)}
+  dl{margin:10px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
+  dt{color:var(--mut)}dd{margin:0;font-weight:600;word-break:break-all}
+  input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:#0f172a;color:var(--fg);font-size:1rem;margin-top:6px}
+  .hist div{padding:8px 0;border-top:1px solid var(--bd);font:.85rem ui-monospace,Menlo,monospace;word-break:break-all;cursor:pointer}
+  .hist div:first-child{border-top:0}
+  summary{cursor:pointer;color:var(--mut)}
+</style>
+</head>
+<body>
+<main>
+  <h1>📷 Leitor de Código de Barras</h1>
+
+  <div class="card">
+    <div id="reader"></div>
+    <div class="row">
+      <button id="btnStart">Iniciar câmera</button>
+      <button id="btnStop" class="sec" hidden>Parar</button>
+      <button id="btnTorch" class="sec" hidden>Lanterna</button>
+    </div>
+    <div class="msg" id="status">Toque em “Iniciar câmera” e aponte para o código de barras (mantenha o código na horizontal, a ~15–20 cm).</div>
+  </div>
+
+  <div class="card" id="result" hidden>
+    <span class="badge neu" id="badge"></span>
+    <div class="code" id="code"></div>
+    <dl id="fields"></dl>
+    <div class="row">
+      <button id="btnCopy">Copiar número</button>
+      <button id="btnShare" class="sec" hidden>Compartilhar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>Digitar / colar um código manualmente</summary>
+      <input type="text" id="manual" inputmode="numeric" placeholder="Cole a chave de acesso ou código">
+      <div class="row"><button id="btnManual" class="sec">Analisar</button></div>
+    </details>
+  </div>
+
+  <div class="card hist" id="histCard" hidden>
+    <strong>Histórico</strong>
+    <div id="hist"></div>
+    <div class="row"><button class="sec" id="btnClear">Limpar histórico</button></div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const UFS = {11:'RO',12:'AC',13:'AM',14:'RR',15:'PA',16:'AP',17:'TO',21:'MA',22:'PI',23:'CE',24:'RN',25:'PB',26:'PE',27:'AL',28:'SE',29:'BA',31:'MG',32:'ES',33:'RJ',35:'SP',41:'PR',42:'SC',43:'RS',50:'MS',51:'MT',52:'GO',53:'DF'};
+const MODELOS = {55:'NF-e (modelo 55)',65:'NFC-e (modelo 65)',57:'CT-e (modelo 57)',58:'MDF-e (modelo 58)',67:'CT-e OS (modelo 67)'};
+const TPEMIS = {1:'Normal',2:'Contingência FS-IA',3:'Contingência SCAN',4:'Contingência EPEC',5:'Contingência FS-DA',6:'Contingência SVC-AN',7:'Contingência SVC-RS',9:'Contingência off-line NFC-e'};
+
+function dvChave(k43){ // módulo 11, pesos 2..9
+  let p=2,s=0;
+  for(let i=k43.length-1;i>=0;i--){ s+=(+k43[i])*p; p=p===9?2:p+1; }
+  const r=s%11; return (r<2)?0:11-r;
+}
+const fmtCnpj = c => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+const fmtChave = c => c.replace(/(\d{4})(?=\d)/g,'$1 ');
+
+function parse(raw){
+  const digits = raw.replace(/\D/g,'');
+  const out = {raw, digits, badge:['neu','Código lido'], fields:[]};
+  if(digits.length===44){
+    const dvOk = dvChave(digits.slice(0,43))===+digits[43];
+    const aa=digits.slice(2,4), mm=digits.slice(4,6);
+    out.badge = dvOk ? ['ok','Chave de acesso válida'] : ['bad','Chave de acesso com dígito verificador inválido'];
+    out.display = fmtChave(digits);
+    out.fields = [
+      ['UF', `${UFS[+digits.slice(0,2)]||'?'} (${digits.slice(0,2)})`],
+      ['Emissão (AA/MM)', `${mm}/20${aa}`],
+      ['CNPJ emitente', fmtCnpj(digits.slice(6,20))],
+      ['Modelo', MODELOS[+digits.slice(20,22)] || digits.slice(20,22)],
+      ['Série', String(+digits.slice(22,25))],
+      ['Número da nota', String(+digits.slice(25,34))],
+      ['Tipo de emissão', TPEMIS[+digits[34]] || digits[34]],
+      ['Código numérico', digits.slice(35,43)],
+      ['Dígito verificador', digits[43]]
+    ];
+  } else if([47,48].includes(digits.length)){
+    out.badge=['neu', digits.length===47?'Linha digitável de boleto (bancário)':'Boleto de convênio/arrecadação'];
+    out.display = digits;
+  } else if(/^\d+$/.test(raw) && [8,12,13,14].includes(digits.length)){
+    out.badge=['neu', {8:'EAN-8',12:'UPC-A',13:'EAN-13 (GTIN)',14:'GTIN-14'}[digits.length]];
+    out.display = digits;
+  } else out.display = raw;
+  return out;
+}
+
+let last = null;
+function show(raw, fmt){
+  const r = parse(raw); last = r;
+  $('result').hidden=false;
+  const b=$('badge'); b.className='badge '+r.badge[0]; b.textContent=r.badge[1]+(fmt?` · ${fmt}`:'');
+  $('code').textContent = r.display;
+  $('fields').innerHTML = r.fields.map(([k,v])=>`<dt>${k}</dt><dd>${v.replace(/</g,'&lt;')}</dd>`).join('');
+  $('result').scrollIntoView({behavior:'smooth',block:'nearest'});
+  addHist(r.digits.length>=8?r.digits:raw);
+}
+
+// histórico
+function loadHist(){ try{return JSON.parse(localStorage.getItem('hist')||'[]')}catch{return[]} }
+function addHist(v){ try{ const h=[v,...loadHist().filter(x=>x!==v)].slice(0,20); localStorage.setItem('hist',JSON.stringify(h)); }catch{} renderHist(); }
+function renderHist(){
+  const h=loadHist(); $('histCard').hidden=!h.length;
+  $('hist').innerHTML=''; h.forEach(v=>{ const d=document.createElement('div'); d.textContent=v; d.onclick=()=>show(v); $('hist').appendChild(d); });
+}
+$('btnClear').onclick=()=>{ try{localStorage.removeItem('hist')}catch{} renderHist(); };
+renderHist();
+
+// scanner
+let scanner=null, torchOn=false;
+const setStatus=(t,e)=>{ $('status').textContent=t; $('status').className='msg'+(e?' err':''); };
+
+async function start(){
+  if(!window.isSecureContext){ setStatus('A câmera só funciona em HTTPS. Abra o link https://…',true); return; }
+  scanner = scanner || new Html5Qrcode('reader',{
+    formatsToSupport:[Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.QR_CODE,Html5QrcodeSupportedFormats.DATA_MATRIX],
+    useBarCodeDetector:true, verbose:false
+  });
+  try{
+    await scanner.start(
+      {facingMode:'environment'},
+      {fps:12, qrbox:(w,h)=>({width:Math.floor(w*0.92),height:Math.floor(Math.min(h,w)*0.4)}),
+       videoConstraints:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]}},
+      (text,res)=>{ if(navigator.vibrate) navigator.vibrate(120); show(text,res?.result?.format?.formatName); stop(); },
+      ()=>{}
+    );
+    $('btnStart').hidden=true; $('btnStop').hidden=false;
+    setStatus('Lendo… aponte para o código de barras.');
+    try{ const caps=scanner.getRunningTrackCapabilities(); if(caps&&caps.torch) $('btnTorch').hidden=false; }catch{}
+  }catch(e){
+    const m=String(e);
+    setStatus(/Permission|NotAllowed/i.test(m)?'Permissão da câmera negada. Libere o acesso nas configurações do navegador.':'Não foi possível abrir a câmera: '+m,true);
+  }
+}
+async function stop(){
+  try{ if(scanner?.isScanning){ await scanner.stop(); } }catch{}
+  $('btnStart').hidden=false; $('btnStop').hidden=true; $('btnTorch').hidden=true; torchOn=false;
+  $('btnStart').textContent='Ler outro código';
+  setStatus('Leitura concluída.');
+}
+$('btnStart').onclick=start;
+$('btnStop').onclick=stop;
+$('btnTorch').onclick=async()=>{ torchOn=!torchOn; try{ await scanner.applyVideoConstraints({advanced:[{torch:torchOn}]}); }catch{} };
+
+$('btnManual').onclick=()=>{ const v=$('manual').value.trim(); if(v) show(v,'manual'); };
+$('btnCopy').onclick=async()=>{ if(!last)return; try{ await navigator.clipboard.writeText(last.digits||last.raw); $('btnCopy').textContent='Copiado ✓'; setTimeout(()=>$('btnCopy').textContent='Copiar número',1500);}catch{ setStatus('Não foi possível copiar.',true);} };
+if(navigator.share){ $('btnShare').hidden=false; $('btnShare').onclick=()=>last&&navigator.share({text:last.digits||last.raw}).catch(()=>{}); }
+</script>
+</body>
+</html>
